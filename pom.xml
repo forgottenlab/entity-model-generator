@@ -1,0 +1,44 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        父工程坐标。
+        说明：
+        1. 该模块本身不生成 jar，只用于统一管理子模块。
+        2. artifactId 与仓库名保持一致，便于发布和维护。
+    -->
+    <groupId>io.github.heran.emg</groupId>
+    <artifactId>entity-model-generator</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <!--
+        子模块列表。
+        当前 V1 保持四模块结构：
+        - annotations：注解定义
+        - core：公共模型与工具
+        - processor：APT 处理器
+        - demo：演示用业务模块
+    -->
+    <modules>
+        <module>emg-annotations</module>
+        <module>emg-core</module>
+        <module>emg-processor</module>
+        <module>emg-demo</module>
+    </modules>
+
+    <!--
+        统一属性配置。
+        说明：
+        1. 当前项目基于 JDK 17。
+        2. 统一源码编码为 UTF-8。
+    -->
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+</project>

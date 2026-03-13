@@ -1,0 +1,84 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        继承父工程统一版本与构建配置。
+    -->
+    <parent>
+        <groupId>io.github.heran.emg</groupId>
+        <artifactId>entity-model-generator</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <!--
+        APT 处理器模块。
+        说明：
+        1. 该模块提供 AutoModelProcessor。
+        2. 其职责是在编译期解析实体类并生成 DTO / Response / Converter。
+    -->
+    <artifactId>emg-processor</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- 注解定义模块 -->
+        <dependency>
+            <groupId>io.github.heran.emg</groupId>
+            <artifactId>emg-annotations</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- 公共模型与工具模块 -->
+        <dependency>
+            <groupId>io.github.heran.emg</groupId>
+            <artifactId>emg-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!--
+            JavaPoet 用于辅助生成 Java 源码。
+            当前项目虽然仍以字符串拼接为主，但保留该依赖方便后续升级。
+        -->
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>javapoet</artifactId>
+            <version>1.13.0</version>
+        </dependency>
+
+        <!--
+            AutoService 注解（可选）。
+            如果你后续使用 @AutoService(Processor.class) 自动生成 SPI 文件时会用到。
+            当前若你手写 META-INF/services 文件，也可以先保留为可选依赖。
+        -->
+        <dependency>
+            <groupId>com.google.auto.service</groupId>
+            <artifactId>auto-service-annotations</artifactId>
+            <version>1.1.1</version>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+
+                    <!--
+                        关键配置：
+                        禁止 processor 模块在编译自己时执行注解处理。
+                        否则容易出现“Processor 自己编译自己”导致的 Provider not found 问题。
+                    -->
+                    <proc>none</proc>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
