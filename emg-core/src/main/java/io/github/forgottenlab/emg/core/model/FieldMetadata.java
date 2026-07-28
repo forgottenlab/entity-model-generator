@@ -1,5 +1,8 @@
 package io.github.forgottenlab.emg.core.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 实体字段元数据。
  *
@@ -20,18 +23,33 @@ public class FieldMetadata {
     private String responseFieldName;
 
     /**
-     * 字段类型全限定名。
+     * 使用全限定声明类型组成的字段类型源码表达式。
      *
-     * <p>例如：{@code java.time.LocalDateTime}</p>
+     * <p>例如：{@code java.time.LocalDateTime[]}、
+     * {@code java.util.List<java.lang.String>}</p>
      */
     private String qualifiedTypeName;
 
     /**
-     * 字段类型简单名。
+     * 使用简单声明类型组成的字段类型源码表达式。
      *
-     * <p>例如：{@code LocalDateTime}</p>
+     * <p>例如：{@code LocalDateTime[]}、{@code List<String>}</p>
      */
     private String simpleTypeName;
+
+    /**
+     * 字段类型表达式引用的顶层声明类型。
+     *
+     * <p>例如 {@code Map<String, Outer.Inner>} 会记录
+     * {@code java.util.Map}、{@code java.lang.String} 和 {@code example.Outer}。
+     * 生成器据此输出合法 import，并检测 simple name 冲突。</p>
+     */
+    private final List<String> referencedTypeNames = new ArrayList<>();
+
+    /**
+     * Converter 读取源实体字段时实际调用的 getter 名称。
+     */
+    private String sourceGetterName;
 
     /**
      * 是否生成到 DTO。
@@ -78,6 +96,18 @@ public class FieldMetadata {
 
     public void setSimpleTypeName(String simpleTypeName) {
         this.simpleTypeName = simpleTypeName;
+    }
+
+    public List<String> getReferencedTypeNames() {
+        return referencedTypeNames;
+    }
+
+    public String getSourceGetterName() {
+        return sourceGetterName;
+    }
+
+    public void setSourceGetterName(String sourceGetterName) {
+        this.sourceGetterName = sourceGetterName;
     }
 
     public boolean isGenerateForDto() {

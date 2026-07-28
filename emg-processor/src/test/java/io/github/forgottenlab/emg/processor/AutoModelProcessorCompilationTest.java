@@ -234,11 +234,11 @@ class AutoModelProcessorCompilationTest {
     void rejectsInvalidModelPrefixWithErrorDiagnostic() {
         Compilation compilation = compile(entitySource(
                 "test.emg.invalid.prefix.entity.InvalidPrefixEntity",
-                "@AutoModel(\"invalidPrefix\")",
+                "@AutoModel(\"123InvalidPrefix\")",
                 field("Long", "id")
         ));
 
-        assertFailedWithError(compilation, "@AutoModel.value() 必须符合 Java 类名前缀规范");
+        assertFailedWithError(compilation, "@AutoModel.value() 必须是合法的 Java 标识符且不能是关键字");
     }
 
     @Test
