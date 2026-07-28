@@ -7,6 +7,7 @@ import io.github.forgottenlab.emg.processor.generator.ConverterClassGenerator;
 import io.github.forgottenlab.emg.processor.generator.DtoClassGenerator;
 import io.github.forgottenlab.emg.processor.generator.ListResponseClassGenerator;
 import io.github.forgottenlab.emg.processor.resolver.AutoModelMetadataResolver;
+import io.github.forgottenlab.emg.processor.support.ProcessorException;
 import io.github.forgottenlab.emg.processor.support.ProcessorLogger;
 import io.github.forgottenlab.emg.processor.validator.AutoModelValidator;
 
@@ -18,6 +19,8 @@ import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -119,46 +122,66 @@ public class AutoModelProcessor extends AbstractProcessor {
         // 获取所有标注了 @AutoModel 的元素
         Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(AutoModel.class);
 
+        Map<AutoModelMetadata, Element> candidates = new LinkedHashMap<>();
+        boolean validationFailed = false;
+
+        // 第一阶段：解析并校验整轮输入，不写入任何源码。
         for (Element element : elements) {
             try {
-                // 1. 解析实体类元数据
+                validator.validateAnnotatedElement(element);
                 AutoModelMetadata metadata = metadataResolver.resolve(element);
-
-                // 2. 执行编译期校验
                 validator.validate(metadata, element);
-
-                logger.note("AutoGen 开始处理实体: " + metadata.getEntityQualifiedName());
-
-                // 3. 按配置生成 DTO
-                if (metadata.isGenerateDto()) {
-                    dtoClassGenerator.generate(metadata);
-                    logger.note("已生成 DTO: " + metadata.getDtoQualifiedName());
-                }
-
-                // 4. 按配置生成 BaseResponse
-                if (metadata.isGenerateBaseResponse()) {
-                    baseResponseClassGenerator.generate(metadata);
-                    logger.note("已生成 BaseResponse: " + metadata.getBaseResponseQualifiedName());
-                }
-
-                // 5. 按配置生成 ListResponse
-                if (metadata.isGenerateListResponse()) {
-                    listResponseClassGenerator.generate(metadata);
-                    logger.note("已生成 ListResponse: " + metadata.getListResponseQualifiedName());
-                }
-
-                // 6. 按配置生成 Converter
-                if (metadata.isGenerateConverter()) {
-                    converterClassGenerator.generate(metadata);
-                    logger.note("已生成 Converter: " + metadata.getConverterQualifiedName());
-                }
-
-            } catch (Exception ex) {
-                // 将异常转换为编译期错误，定位到当前源元素
-                logger.error("AutoGen 处理失败: " + ex.getMessage(), element);
+                candidates.put(metadata, element);
+            } catch (ProcessorException exception) {
+                logger.error("AutoGen 处理失败: " + exception.getMessage(), exception.getElement());
+                validationFailed = true;
+            } catch (Exception exception) {
+                logger.error("AutoGen 处理失败: " + exception.getMessage(), element);
+                validationFailed = true;
             }
         }
 
+        if (validationFailed) {
+            return true;
+        }
+
+        try {
+            validator.validateTargetTypeConflicts(candidates);
+        } catch (ProcessorException exception) {
+            logger.error("AutoGen 处理失败: " + exception.getMessage(), exception.getElement());
+            return true;
+        }
+
+        // 第二阶段：整轮预检通过后，才按配置生成源码。
+        for (Map.Entry<AutoModelMetadata, Element> candidate : candidates.entrySet()) {
+            generate(candidate.getKey(), candidate.getValue());
+        }
+
         return true;
+    }
+
+    private void generate(AutoModelMetadata metadata, Element sourceElement) {
+        try {
+            logger.note("AutoGen 开始处理实体: " + metadata.getEntityQualifiedName());
+
+            if (metadata.isGenerateDto()) {
+                dtoClassGenerator.generate(metadata);
+                logger.note("已生成 DTO: " + metadata.getDtoQualifiedName());
+            }
+            if (metadata.isGenerateBaseResponse()) {
+                baseResponseClassGenerator.generate(metadata);
+                logger.note("已生成 BaseResponse: " + metadata.getBaseResponseQualifiedName());
+            }
+            if (metadata.isGenerateListResponse()) {
+                listResponseClassGenerator.generate(metadata);
+                logger.note("已生成 ListResponse: " + metadata.getListResponseQualifiedName());
+            }
+            if (metadata.isGenerateConverter()) {
+                converterClassGenerator.generate(metadata);
+                logger.note("已生成 Converter: " + metadata.getConverterQualifiedName());
+            }
+        } catch (Exception exception) {
+            logger.error("AutoGen 处理失败: " + exception.getMessage(), sourceElement);
+        }
     }
 }

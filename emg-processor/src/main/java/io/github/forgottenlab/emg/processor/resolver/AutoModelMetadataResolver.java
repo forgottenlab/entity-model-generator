@@ -8,6 +8,7 @@ import io.github.forgottenlab.emg.processor.support.PackageResolver;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 
@@ -22,7 +23,7 @@ public class AutoModelMetadataResolver {
     /**
      * 字段元数据解析器。
      */
-    private final FieldMetadataResolver fieldMetadataResolver = new FieldMetadataResolver();
+    private final FieldMetadataResolver fieldMetadataResolver;
 
     /**
      * APT 处理环境。
@@ -31,6 +32,7 @@ public class AutoModelMetadataResolver {
 
     public AutoModelMetadataResolver(ProcessingEnvironment processingEnvironment) {
         this.processingEnvironment = processingEnvironment;
+        this.fieldMetadataResolver = new FieldMetadataResolver(processingEnvironment);
     }
 
     /**
@@ -58,10 +60,12 @@ public class AutoModelMetadataResolver {
         metadata.setConverterPackageName(PackageResolver.resolveConverterPackage(metadata.getEntityPackageName()));
 
         for (Element enclosed : typeElement.getEnclosedElements()) {
-            if (enclosed.getKind() != ElementKind.FIELD) {
+            // V1 只复制当前实体直接声明的实例字段；getEnclosedElements 不包含继承字段。
+            if (enclosed.getKind() != ElementKind.FIELD
+                    || enclosed.getModifiers().contains(Modifier.STATIC)) {
                 continue;
             }
-            FieldMetadata fieldMetadata = fieldMetadataResolver.resolve(enclosed);
+            FieldMetadata fieldMetadata = fieldMetadataResolver.resolve(enclosed, typeElement, autoModel);
             if (fieldMetadata != null) {
                 metadata.getFields().add(fieldMetadata);
             }

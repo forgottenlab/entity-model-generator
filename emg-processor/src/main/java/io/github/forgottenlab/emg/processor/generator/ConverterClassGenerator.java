@@ -121,9 +121,13 @@ public class ConverterClassGenerator extends AbstractClassGenerator {
             String targetField = useResponseFieldName
                     ? field.getEffectiveResponseFieldName()
                     : field.getSourceFieldName();
+            String sourceGetter = field.getSourceGetterName();
+            if (sourceGetter == null || sourceGetter.isBlank()) {
+                sourceGetter = "get" + NameUtils.capitalize(sourceField);
+            }
 
             sb.append("        target.set").append(NameUtils.capitalize(targetField))
-                    .append("(source.get").append(NameUtils.capitalize(sourceField)).append("());\n");
+                    .append("(source.").append(sourceGetter).append("());\n");
         }
 
         sb.append("        return target;\n")

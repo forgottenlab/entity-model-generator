@@ -1,15 +1,24 @@
 package io.github.forgottenlab.emg.processor.resolver;
 
+import io.github.forgottenlab.emg.annotations.AutoModel;
 import io.github.forgottenlab.emg.annotations.DtoIgnore;
 import io.github.forgottenlab.emg.annotations.ListIgnore;
 import io.github.forgottenlab.emg.annotations.ResponseAlias;
 import io.github.forgottenlab.emg.annotations.ResponseIgnore;
 import io.github.forgottenlab.emg.core.model.FieldMetadata;
-import io.github.forgottenlab.emg.core.util.TypeUtils;
+import io.github.forgottenlab.emg.core.util.NameUtils;
+import io.github.forgottenlab.emg.processor.support.ProcessorException;
 
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.util.Types;
+import java.util.List;
 
 /**
  * 字段元数据解析器。
@@ -19,13 +28,23 @@ import javax.lang.model.element.VariableElement;
  */
 public class FieldMetadataResolver {
 
+    private final TypeMirrorTypeResolver typeResolver = new TypeMirrorTypeResolver();
+
+    private final Types types;
+
+    public FieldMetadataResolver(ProcessingEnvironment processingEnvironment) {
+        this.types = processingEnvironment.getTypeUtils();
+    }
+
     /**
      * 解析单个字段。
      *
      * @param element 字段元素
      * @return 字段元数据；若不是字段则返回 null
      */
-    public FieldMetadata resolve(Element element) {
+    public FieldMetadata resolve(Element element,
+                                 TypeElement sourceType,
+                                 AutoModel autoModel) {
         if (element.getKind() != ElementKind.FIELD) {
             return null;
         }
@@ -33,12 +52,18 @@ public class FieldMetadataResolver {
         VariableElement field = (VariableElement) element;
         FieldMetadata metadata = new FieldMetadata();
         String fieldName = field.getSimpleName().toString();
-        String qualifiedTypeName = field.asType().toString();
+        TypeMirrorTypeResolver.ResolvedType resolvedType;
+        try {
+            resolvedType = typeResolver.resolve(field.asType());
+        } catch (IllegalArgumentException exception) {
+            throw new ProcessorException(exception.getMessage(), field, exception);
+        }
 
         metadata.setSourceFieldName(fieldName);
         metadata.setResponseFieldName(resolveResponseFieldName(field, fieldName));
-        metadata.setQualifiedTypeName(qualifiedTypeName);
-        metadata.setSimpleTypeName(TypeUtils.simpleName(qualifiedTypeName));
+        metadata.setQualifiedTypeName(resolvedType.qualifiedName());
+        metadata.setSimpleTypeName(resolvedType.simpleName());
+        metadata.getReferencedTypeNames().addAll(resolvedType.referencedTypeNames());
 
         // DTO 生成规则：只要没有 @DtoIgnore，就允许进入 DTO
         metadata.setGenerateForDto(field.getAnnotation(DtoIgnore.class) == null);
@@ -50,7 +75,58 @@ public class FieldMetadataResolver {
         metadata.setGenerateForBaseResponse(!responseIgnore);
         metadata.setGenerateForListResponse(!responseIgnore && field.getAnnotation(ListIgnore.class) == null);
 
+        if (requiresGetter(metadata, autoModel)) {
+            metadata.setSourceGetterName(resolveGetter(field, sourceType));
+        }
+
         return metadata;
+    }
+
+    private boolean requiresGetter(FieldMetadata metadata, AutoModel autoModel) {
+        return autoModel.generateConverter()
+                && ((autoModel.generateDto() && metadata.isGenerateForDto())
+                || (autoModel.generateBaseResponse() && metadata.isGenerateForBaseResponse())
+                || (autoModel.generateListResponse() && metadata.isGenerateForListResponse()));
+    }
+
+    private String resolveGetter(VariableElement field, TypeElement sourceType) {
+        String suffix = NameUtils.capitalize(field.getSimpleName().toString());
+        List<String> candidateNames = field.asType().getKind() == TypeKind.BOOLEAN
+                ? List.of("is" + suffix, "get" + suffix)
+                : List.of("get" + suffix);
+
+        for (String candidateName : candidateNames) {
+            for (Element enclosed : sourceType.getEnclosedElements()) {
+                if (isCallableGetter(enclosed, candidateName, field)) {
+                    return candidateName;
+                }
+            }
+        }
+
+        String expected = field.asType().getKind() == TypeKind.BOOLEAN
+                ? String.join(" 或 ", candidateNames.stream().map(name -> name + "()").toList())
+                : candidateNames.get(0) + "()";
+        throw new ProcessorException(
+                "Converter 无法读取字段 " + field.getSimpleName()
+                        + "：需要 public 实例零参 getter " + expected
+                        + "，且返回类型为 " + field.asType(),
+                field
+        );
+    }
+
+    private boolean isCallableGetter(Element element,
+                                     String expectedName,
+                                     VariableElement field) {
+        if (element.getKind() != ElementKind.METHOD
+                || !element.getSimpleName().contentEquals(expectedName)
+                || !element.getModifiers().contains(Modifier.PUBLIC)
+                || element.getModifiers().contains(Modifier.STATIC)) {
+            return false;
+        }
+
+        ExecutableElement method = (ExecutableElement) element;
+        return method.getParameters().isEmpty()
+                && types.isSameType(method.getReturnType(), field.asType());
     }
 
     /**

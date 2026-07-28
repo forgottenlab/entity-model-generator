@@ -8,8 +8,10 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -79,8 +81,10 @@ public abstract class AbstractClassGenerator {
         StringBuilder sb = new StringBuilder();
         sb.append("package ").append(packageName).append(";\n\n");
 
+        Set<String> ambiguousSimpleNames = resolveAmbiguousSimpleNames(fields, includePredicate);
+
         appendGeneratedImport(sb);
-        appendImports(sb, fields, includePredicate);
+        appendImports(sb, fields, includePredicate, ambiguousSimpleNames);
 
         sb.append("/**\n")
                 .append(" * ").append(classComment).append("\n")
@@ -102,7 +106,8 @@ public abstract class AbstractClassGenerator {
             sb.append("    /**\n")
                     .append("     * 自动生成字段。\n")
                     .append("     */\n")
-                    .append("    private ").append(field.getDisplayTypeName()).append(" ").append(fieldName).append(";\n\n");
+                    .append("    private ").append(displayTypeName(field, ambiguousSimpleNames))
+                    .append(" ").append(fieldName).append(";\n\n");
         }
 
         // 生成 getter / setter
@@ -116,7 +121,7 @@ public abstract class AbstractClassGenerator {
                     : field.getSourceFieldName();
 
             String methodSuffix = NameUtils.capitalize(fieldName);
-            String typeName = field.getDisplayTypeName();
+            String typeName = displayTypeName(field, ambiguousSimpleNames);
 
             sb.append("    public ").append(typeName).append(" get").append(methodSuffix).append("() {\n")
                     .append("        return ").append(fieldName).append(";\n")
@@ -151,7 +156,8 @@ public abstract class AbstractClassGenerator {
      */
     private void appendImports(StringBuilder sb,
                                List<FieldMetadata> fields,
-                               Predicate<FieldMetadata> includePredicate) {
+                               Predicate<FieldMetadata> includePredicate,
+                               Set<String> ambiguousSimpleNames) {
         Set<String> imports = new LinkedHashSet<>();
 
         for (FieldMetadata field : fields) {
@@ -159,11 +165,13 @@ public abstract class AbstractClassGenerator {
                 continue;
             }
 
-            String qualifiedTypeName = field.getQualifiedTypeName();
-            if (qualifiedTypeName != null
-                    && qualifiedTypeName.contains(".")
-                    && !qualifiedTypeName.startsWith("java.lang.")) {
-                imports.add(qualifiedTypeName);
+            if (usesQualifiedTypeName(field, ambiguousSimpleNames)) {
+                continue;
+            }
+            for (String referencedTypeName : field.getReferencedTypeNames()) {
+                if (!referencedTypeName.startsWith("java.lang.")) {
+                    imports.add(referencedTypeName);
+                }
             }
         }
 
@@ -174,5 +182,42 @@ public abstract class AbstractClassGenerator {
         if (!imports.isEmpty()) {
             sb.append("\n");
         }
+    }
+
+    private Set<String> resolveAmbiguousSimpleNames(List<FieldMetadata> fields,
+                                                    Predicate<FieldMetadata> includePredicate) {
+        Map<String, String> qualifiedNameBySimpleName = new HashMap<>();
+        Set<String> ambiguousSimpleNames = new LinkedHashSet<>();
+
+        for (FieldMetadata field : fields) {
+            if (!includePredicate.test(field)) {
+                continue;
+            }
+            for (String referencedTypeName : field.getReferencedTypeNames()) {
+                String simpleName = simpleName(referencedTypeName);
+                String previous = qualifiedNameBySimpleName.putIfAbsent(simpleName, referencedTypeName);
+                if (previous != null && !previous.equals(referencedTypeName)) {
+                    ambiguousSimpleNames.add(simpleName);
+                }
+            }
+        }
+        return ambiguousSimpleNames;
+    }
+
+    private String displayTypeName(FieldMetadata field, Set<String> ambiguousSimpleNames) {
+        return usesQualifiedTypeName(field, ambiguousSimpleNames)
+                ? field.getQualifiedTypeName()
+                : field.getDisplayTypeName();
+    }
+
+    private boolean usesQualifiedTypeName(FieldMetadata field, Set<String> ambiguousSimpleNames) {
+        return field.getReferencedTypeNames().stream()
+                .map(this::simpleName)
+                .anyMatch(ambiguousSimpleNames::contains);
+    }
+
+    private String simpleName(String qualifiedName) {
+        int separator = qualifiedName.lastIndexOf('.');
+        return separator < 0 ? qualifiedName : qualifiedName.substring(separator + 1);
     }
 }
