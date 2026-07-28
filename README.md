@@ -228,9 +228,9 @@ AutoModelProcessor
 ### 定义实体类
 
 ```java
-package io.github.heran.emg.user.entity;
+package io.github.forgottenlab.emg.demo.user.entity;
 
-import io.github.heran.emg.annotation.*;
+import io.github.forgottenlab.emg.annotations.*;
 
 import java.time.LocalDateTime;
 
@@ -383,15 +383,15 @@ mvn clean install
 
 ```xml
 <dependency>
-    <groupId>io.github.heran.emg</groupId>
+    <groupId>io.github.forgottenlab.emg</groupId>
     <artifactId>emg-annotations</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.2.0</version>
 </dependency>
 
 <dependency>
-    <groupId>io.github.heran.emg</groupId>
+    <groupId>io.github.forgottenlab.emg</groupId>
     <artifactId>emg-core</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -400,9 +400,9 @@ mvn clean install
 ```xml
 <annotationProcessorPaths>
     <path>
-        <groupId>io.github.heran.emg</groupId>
+        <groupId>io.github.forgottenlab.emg</groupId>
         <artifactId>emg-processor</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.2.0</version>
     </path>
 </annotationProcessorPaths>
 ```

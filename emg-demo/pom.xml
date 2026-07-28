@@ -1,82 +1,63 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- 继承父工程统一配置 -->
     <parent>
-        <groupId>io.github.heran.emg</groupId>
+        <groupId>io.github.forgottenlab.emg</groupId>
         <artifactId>entity-model-generator</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.2.0</version>
     </parent>
 
-    <!--
-        demo 模块。
-        说明：
-        1. 用于演示 AutoGen 的使用方式。
-        2. 本模块中手写代码直接依赖 APT 生成类，因此必须先生成源码，再编译业务代码。
-    -->
     <artifactId>emg-demo</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <name>EMG Demo</name>
+    <description>Demo module for Entity Model Generator.</description>
 
     <dependencies>
-        <!-- 注解模块 -->
+        <!--
+            demo 编写实体类时需要直接使用注解，因此依赖 annotations。
+         -->
         <dependency>
-            <groupId>io.github.heran.emg</groupId>
+            <groupId>io.github.forgottenlab.emg</groupId>
             <artifactId>emg-annotations</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
-        <!-- 公共模型与工具模块 -->
+        <!--
+            demo 若直接使用了 core 中的部分常量、模型或工具类，则保留该依赖。
+            如果没有直接使用，也可以后续移除，保持示例最小化。
+         -->
         <dependency>
-            <groupId>io.github.heran.emg</groupId>
+            <groupId>io.github.forgottenlab.emg</groupId>
             <artifactId>emg-core</artifactId>
-            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!--
-                单次编译方案：
-                1. 在一次 javac 编译中执行注解处理器
-                2. 由 processor 生成 DTO / Response / Converter
-                3. 让 javac 在同一轮编译中继续处理这些生成类
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
                 <configuration>
-                    <release>17</release>
-
                     <!--
-                        明确指定生成源码目录。
-                        这个目录主要用于查看生成结果和让 IDEA 识别，
-                        真正的编译由 javac 在同一次编译过程中完成。
-                    -->
-                    <generatedSourcesDirectory>
-                        ${project.build.directory}/generated-sources/annotations
-                    </generatedSourcesDirectory>
-
-                    <!--
-                        显式告诉 javac：生成源码输出到 target/generated-sources/annotations
-                    -->
-                    <compilerArgs>
-                        <arg>-s</arg>
-                        <arg>${project.build.directory}/generated-sources/annotations</arg>
-                    </compilerArgs>
-
-                    <!--
-                        指定当前模块使用的 annotation processor。
-                    -->
+                        demo 模块在编译时通过 annotationProcessorPaths 显式引入 emg-processor，
+                        这样实体类上的注解才能触发编译期代码生成。
+                     -->
                     <annotationProcessorPaths>
                         <path>
-                            <groupId>io.github.heran.emg</groupId>
+                            <groupId>io.github.forgottenlab.emg</groupId>
                             <artifactId>emg-processor</artifactId>
                             <version>${project.version}</version>
                         </path>
                     </annotationProcessorPaths>
+
+                    <!--
+                        可选配置：
+                        如果你后续想显式指定生成源码输出目录，可考虑增加 generatedSourcesDirectory。
+                        当前先保持默认行为即可，生成目录通常为：
+                        target/generated-sources/annotations
+                     -->
                 </configuration>
             </plugin>
         </plugins>
