@@ -39,6 +39,9 @@
 
         <!-- 常用插件 / 依赖版本集中管理，便于后续统一升级 -->
         <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <maven.surefire.plugin.version>3.5.5</maven.surefire.plugin.version>
+        <junit.jupiter.version>5.14.4</junit.jupiter.version>
+        <compile.testing.version>0.22.0</compile.testing.version>
     </properties>
 
     <dependencyManagement>
