@@ -5,6 +5,7 @@ import io.github.forgottenlab.emg.annotations.DtoIgnore;
 import io.github.forgottenlab.emg.annotations.ListIgnore;
 import io.github.forgottenlab.emg.annotations.ResponseAlias;
 import io.github.forgottenlab.emg.annotations.ResponseIgnore;
+import io.github.forgottenlab.emg.annotations.ViewGroups;
 import io.github.forgottenlab.emg.core.model.FieldMetadata;
 import io.github.forgottenlab.emg.core.util.NameUtils;
 import io.github.forgottenlab.emg.processor.support.ProcessorException;
@@ -64,6 +65,7 @@ public class FieldMetadataResolver {
         metadata.setQualifiedTypeName(resolvedType.qualifiedName());
         metadata.setSimpleTypeName(resolvedType.simpleName());
         metadata.getReferencedTypeNames().addAll(resolvedType.referencedTypeNames());
+        resolveViewGroups(field, metadata);
 
         // DTO 生成规则：只要没有 @DtoIgnore，就允许进入 DTO
         metadata.setGenerateForDto(field.getAnnotation(DtoIgnore.class) == null);
@@ -83,10 +85,23 @@ public class FieldMetadataResolver {
     }
 
     private boolean requiresGetter(FieldMetadata metadata, AutoModel autoModel) {
-        return autoModel.generateConverter()
+        return autoModel != null
+                && autoModel.generateConverter()
                 && ((autoModel.generateDto() && metadata.isGenerateForDto())
                 || (autoModel.generateBaseResponse() && metadata.isGenerateForBaseResponse())
                 || (autoModel.generateListResponse() && metadata.isGenerateForListResponse()));
+    }
+
+    private void resolveViewGroups(VariableElement field, FieldMetadata metadata) {
+        ViewGroups annotation = field.getAnnotation(ViewGroups.class);
+        if (annotation == null) {
+            return;
+        }
+        for (String group : annotation.value()) {
+            if (!metadata.getViewGroups().contains(group)) {
+                metadata.getViewGroups().add(group);
+            }
+        }
     }
 
     private String resolveGetter(VariableElement field, TypeElement sourceType) {

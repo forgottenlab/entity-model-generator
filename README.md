@@ -334,6 +334,91 @@ private String name;
 
 ---
 
+## 🧭 V2 自定义单表 View
+
+V2 延续“约定优于配置”：常见场景只需要一个 group 名称，不需要重复罗列字段、配置包路径或指定默认类名。
+
+### 最短写法
+
+```java
+@AutoView("basic")
+public class UserEntity {
+
+    @ViewGroups("basic")
+    private Long id;
+
+    @ViewGroups("basic")
+    private String username;
+}
+```
+
+编译后默认生成：
+
+```text
+model.view.UserBasicView
+```
+
+默认命名规则是：
+
+```text
+BaseName + CapitalizedGroup + View
+```
+
+`UserEntity` 会移除 `Entity` 后缀，因此 group 为 `basic` 时生成 `UserBasicView`。
+
+### 一个字段属于多个分组
+
+```java
+@AutoView("basic")
+@AutoView(value = "detail", name = "UserProfileView")
+public class UserEntity {
+
+    @ViewGroups({"basic", "detail"})
+    private Long id;
+
+    @ViewGroups("basic")
+    private String username;
+
+    @ViewGroups("detail")
+    private String phone;
+}
+```
+
+这里会生成：
+
+- `model.view.UserBasicView`
+- `model.view.UserProfileView`
+
+`name` 是可选的完整类简单名覆盖；未填写时始终使用默认命名。
+
+### 与 `@AutoModel` 组合
+
+```java
+@AutoModel("User")
+@AutoView("basic")
+public class UserEntity {
+    // fields
+}
+```
+
+- 只有 `@AutoModel`：继续生成 DTO、BaseResponse、ListResponse、Converter。
+- 只有 `@AutoView`：无需额外声明 `@AutoModel`，只生成指定 View。
+- 两者同时存在：V1 标准模型和 V2 View 同时生成。
+
+View 字段只由 `@ViewGroups` 决定。`@DtoIgnore`、`@ResponseIgnore`、`@ListIgnore` 和 `@ResponseAlias` 不影响 View，View 中仍使用实体原字段名。
+
+`@ViewGroups` 使用 `RetentionPolicy.CLASS`，为后续跨模块元数据读取保留能力；当前版本仍只处理本次 compilation 中的单实体 View。
+
+### 当前边界
+
+- 只支持单实体直接声明的非 `static` 字段，不收集继承字段。
+- 不生成 View Converter。
+- 不支持 JoinView 或 SQL 解析。
+- 不提供包路径配置，统一生成到 `model.view`。
+- 不生成构造器、builder、record 或 Lombok 代码。
+
+---
+
 ## 🧪 编译时工作流程
 
 EMG 的工作过程大致如下：

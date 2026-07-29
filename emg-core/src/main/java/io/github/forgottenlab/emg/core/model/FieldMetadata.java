@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * 实体字段元数据。
  *
- * <p>用于描述单个字段在 DTO、BaseResponse、ListResponse 中的生成行为。</p>
+ * <p>用于描述单个字段在 DTO、BaseResponse、ListResponse 和自定义 View 中的生成行为。</p>
  */
 public class FieldMetadata {
 
@@ -50,6 +50,11 @@ public class FieldMetadata {
      * Converter 读取源实体字段时实际调用的 getter 名称。
      */
     private String sourceGetterName;
+
+    /**
+     * 字段所属的 View 分组，保持注解声明顺序并去重。
+     */
+    private final List<String> viewGroups = new ArrayList<>();
 
     /**
      * 是否生成到 DTO。
@@ -108,6 +113,10 @@ public class FieldMetadata {
 
     public void setSourceGetterName(String sourceGetterName) {
         this.sourceGetterName = sourceGetterName;
+    }
+
+    public List<String> getViewGroups() {
+        return viewGroups;
     }
 
     public boolean isGenerateForDto() {

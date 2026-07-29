@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
  * <p>说明：</p>
  * <ol>
  *     <li>对应数据库 {@code user} 表</li>
- *     <li>作为 AutoGen V1 的模型生成源</li>
- *     <li>通过字段注解控制 DTO / Response / ListResponse 的生成行为</li>
+ *     <li>同时作为 EMG V1 标准模型与 V2 自定义 View 的生成源</li>
+ *     <li>通过字段注解分别控制 DTO / Response / ListResponse 与 View</li>
  * </ol>
  */
 @AutoModel(
@@ -21,16 +21,20 @@ import java.time.LocalDateTime;
         generateListResponse = true,
         generateConverter = true
 )
+@AutoView("basic")
+@AutoView(value = "detail", name = "UserProfileView")
 public class UserEntity {
 
     /**
      * 主键。
      */
+    @ViewGroups({"basic", "detail"})
     private Long id;
 
     /**
      * 用户名。
      */
+    @ViewGroups({"basic", "detail"})
     private String username;
 
     /**
@@ -49,6 +53,12 @@ public class UserEntity {
      */
     @ResponseAlias("name")
     private String nickname;
+
+    /**
+     * 手机号，仅进入 detail View。
+     */
+    @ViewGroups("detail")
+    private String phone;
 
     /**
      * 用户状态。
@@ -101,6 +111,14 @@ public class UserEntity {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public Integer getStatus() {
