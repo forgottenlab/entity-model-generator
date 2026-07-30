@@ -107,36 +107,106 @@ EMG 采用的是：
 
 ---
 
-## ⚙️ 核心使用方式
+## 🚀 Quick Start
 
-你只需要在实体类上写一次：
+最小接入只需要修改两个位置：消费者项目的 `pom.xml`，以及一个作为生成来源的 Java class。Maven 配置只有两段：annotations 普通依赖和 processor path。
+
+### 1. 前置条件
+
+- JDK 17
+- Maven
+
+当前 `1.2.0` 尚未发布到 Maven Central。首次使用前需要先克隆 EMG，并将当前源码安装到本地 Maven repository：
+
+```bash
+git clone <EMG repository URL>
+cd entity-model-generator
+mvn clean install
+```
+
+### 2. 在消费者项目中配置 Maven
+
+添加公开注解依赖：
+
+```xml
+<dependency>
+    <groupId>io.github.forgottenlab.emg</groupId>
+    <artifactId>emg-annotations</artifactId>
+    <version>1.2.0</version>
+</dependency>
+```
+
+再在 `maven-compiler-plugin` 中配置 annotation processor：
+
+```xml
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>3.11.0</version>
+    <configuration>
+        <release>17</release>
+        <annotationProcessorPaths>
+            <path>
+                <groupId>io.github.forgottenlab.emg</groupId>
+                <artifactId>emg-processor</artifactId>
+                <version>1.2.0</version>
+            </path>
+        </annotationProcessorPaths>
+    </configuration>
+</plugin>
+```
+
+消费者不需要把 `emg-core` 声明为普通依赖；processor 会通过自身 Maven 依赖获得它。
+
+### 3. 写一个最小 View 来源
 
 ```java
-@AutoModel(
-        value = "User",
-        generateDto = true,
-        generateBaseResponse = true,
-        generateListResponse = true,
-        generateConverter = true
-)
+package com.example.user.entity;
+
+import io.github.forgottenlab.emg.annotations.AutoView;
+import io.github.forgottenlab.emg.annotations.ViewGroups;
+
+@AutoView("basic")
 public class UserEntity {
-    ...
+
+    @ViewGroups("basic")
+    private Long id;
+
+    @ViewGroups("basic")
+    private String username;
 }
 ```
 
-再配合字段级注解：
+### 4. 编译
 
-- `@DtoIgnore`
-- `@ResponseIgnore`
-- `@ListIgnore`
-- `@ResponseAlias`
+```bash
+mvn clean compile
+```
 
-编译后自动生成：
+Maven 会自动加载 processor、编译生成源码并将其加入本次 javac。默认生成位置是：
 
-- `UserDTO`
-- `UserBaseResponse`
-- `UserListResponse`
-- `UserConverter`
+```text
+target/generated-sources/annotations
+```
+
+上例默认生成：
+
+```text
+com.example.user.model.view.UserBasicView
+```
+
+默认命名为 `BaseName + CapitalizedGroup + View`。`@AutoView` 可以独立使用；需要同时生成标准模型时，组合 `@AutoModel("User")` 即可。类名覆盖是可选项：
+
+```java
+@AutoModel("User")
+@AutoView("basic")
+@AutoView(value = "detail", name = "UserProfileView")
+public class UserEntity {
+    // fields and public getters required by the V1 Converter
+}
+```
+
+不需要 Spring、MyBatis、Lombok、运行时反射、额外配置文件、手工 `-s` 或手工注册 generated-sources。Maven 构建不依赖 IDEA。
 
 ---
 
@@ -168,6 +238,9 @@ entity-model-generator
 当前包含：
 
 - `@AutoModel`
+- `@AutoView`
+- `@AutoViews`
+- `@ViewGroups`
 - `@DtoIgnore`
 - `@ResponseIgnore`
 - `@ListIgnore`
@@ -184,6 +257,8 @@ entity-model-generator
 主要包括：
 
 - `AutoModelMetadata`
+- `AutoViewMetadata`
+- `SourceMetadata`
 - `FieldMetadata`
 - `ModelConstants`
 - `NameUtils`
@@ -199,10 +274,10 @@ APT 处理器模块，是项目的核心。
 
 主要职责：
 
-- 扫描 `@AutoModel`
+- 扫描 `@AutoModel`、`@AutoView` 和 `@AutoViews`
 - 解析实体字段和注解
 - 执行编译期校验
-- 生成 DTO / Response / Converter
+- 生成 DTO / Response / Converter / View
 
 核心入口类：
 
@@ -334,6 +409,91 @@ private String name;
 
 ---
 
+## 🧭 V2 自定义单表 View
+
+V2 延续“约定优于配置”：常见场景只需要一个 group 名称，不需要重复罗列字段、配置包路径或指定默认类名。
+
+### 最短写法
+
+```java
+@AutoView("basic")
+public class UserEntity {
+
+    @ViewGroups("basic")
+    private Long id;
+
+    @ViewGroups("basic")
+    private String username;
+}
+```
+
+编译后默认生成：
+
+```text
+model.view.UserBasicView
+```
+
+默认命名规则是：
+
+```text
+BaseName + CapitalizedGroup + View
+```
+
+`UserEntity` 会移除 `Entity` 后缀，因此 group 为 `basic` 时生成 `UserBasicView`。
+
+### 一个字段属于多个分组
+
+```java
+@AutoView("basic")
+@AutoView(value = "detail", name = "UserProfileView")
+public class UserEntity {
+
+    @ViewGroups({"basic", "detail"})
+    private Long id;
+
+    @ViewGroups("basic")
+    private String username;
+
+    @ViewGroups("detail")
+    private String phone;
+}
+```
+
+这里会生成：
+
+- `model.view.UserBasicView`
+- `model.view.UserProfileView`
+
+`name` 是可选的完整类简单名覆盖；未填写时始终使用默认命名。
+
+### 与 `@AutoModel` 组合
+
+```java
+@AutoModel("User")
+@AutoView("basic")
+public class UserEntity {
+    // fields
+}
+```
+
+- 只有 `@AutoModel`：继续生成 DTO、BaseResponse、ListResponse、Converter。
+- 只有 `@AutoView`：无需额外声明 `@AutoModel`，只生成指定 View。
+- 两者同时存在：V1 标准模型和 V2 View 同时生成。
+
+View 字段只由 `@ViewGroups` 决定。`@DtoIgnore`、`@ResponseIgnore`、`@ListIgnore` 和 `@ResponseAlias` 不影响 View，View 中仍使用实体原字段名。
+
+`@ViewGroups` 使用 `RetentionPolicy.CLASS`，为后续跨模块元数据读取保留能力；当前版本仍只处理本次 compilation 中的单实体 View。
+
+### 当前边界
+
+- 只支持单实体直接声明的非 `static` 字段，不收集继承字段。
+- 不生成 View Converter。
+- 不支持 JoinView 或 SQL 解析。
+- 不提供包路径配置，统一生成到 `model.view`。
+- 不生成构造器、builder、record 或 Lombok 代码。
+
+---
+
 ## 🧪 编译时工作流程
 
 EMG 的工作过程大致如下：
@@ -341,15 +501,15 @@ EMG 的工作过程大致如下：
 ```text
 Entity
   ↓
-@AutoModel 扫描
+@AutoModel / @AutoView 扫描
   ↓
 解析字段与注解
   ↓
-构建元数据 AutoModelMetadata / FieldMetadata
+构建共享 SourceMetadata 与 V1/V2 元数据
   ↓
-编译期校验
+整轮编译期预检
   ↓
-生成 DTO / Response / Converter 源码
+生成 DTO / Response / Converter / View 源码
 ```
 
 生成源码默认位于：
@@ -360,52 +520,48 @@ target/generated-sources/annotations
 
 ---
 
-## 🚀 使用方式
+## ❓ 常见问题
 
-### 方式一：源码 / 多模块方式使用（当前推荐）
+### 没有生成任何类
 
-当前版本最适合：
+依次检查：
 
-- 直接克隆源码
-- 以多模块方式学习与使用
-- 便于理解 APT 工作流程
-- 便于后续二次开发
+1. `pom.xml` 是否配置了 `annotationProcessorPaths`。
+2. `mvn -version` 显示的 Java 是否为 JDK 17。
+3. 是否执行了 `mvn clean compile`。
+4. `@AutoModel` 或 `@AutoView` 是否标注在 class 上。
+5. View 字段是否声明了与 `@AutoView` 一致的 `@ViewGroups`。
 
-### 方式二：本地 Maven 仓库使用
+### 提示 group 不存在
 
-在项目根目录执行：
+`@AutoView("basic")` 要求至少一个直接声明的非 `static` 字段属于 `basic`：
 
-```bash
-mvn clean install
+```java
+@ViewGroups("basic")
+private Long id;
 ```
 
-之后可在其他项目中以本地依赖方式引入：
+group 不会自动 trim；`" basic"` 和 `"basic "` 都是非法配置。
 
-```xml
-<dependency>
-    <groupId>io.github.forgottenlab.emg</groupId>
-    <artifactId>emg-annotations</artifactId>
-    <version>1.2.0</version>
-</dependency>
+### IDEA 暂时看不到生成类
 
-<dependency>
-    <groupId>io.github.forgottenlab.emg</groupId>
-    <artifactId>emg-core</artifactId>
-    <version>1.2.0</version>
-</dependency>
-```
+先执行 `mvn clean compile`，再检查 `target/generated-sources/annotations`。部分 IDEA 版本或导入方式可能需要把该目录标记为 Generated Sources Root。IDE 显示不是构建成功的判断依据，Maven 构建结果才是最终真相来源。
 
-并在 `maven-compiler-plugin` 中引入：
+### `ResponseAlias` 为什么不影响 View
 
-```xml
-<annotationProcessorPaths>
-    <path>
-        <groupId>io.github.forgottenlab.emg</groupId>
-        <artifactId>emg-processor</artifactId>
-        <version>1.2.0</version>
-    </path>
-</annotationProcessorPaths>
-```
+`@ResponseAlias` 只负责 V1 Response 字段命名。View 是否包含字段只由 `@ViewGroups` 决定，字段名保持实体原名。
+
+### 能否修改 View 输出包
+
+当前不支持。View 固定生成到 `model.view`，采用约定优于配置。
+
+### 是否支持 JoinView
+
+当前不支持。现阶段只生成单实体 View，也不解析 SQL。
+
+### 是否可以直接从 Maven Central 获取
+
+当前 `1.2.0` 尚未发布到 Maven Central。请先在 EMG 仓库执行 `mvn clean install`，再由消费者项目使用本地 Maven repository 中的构件。
 
 ---
 
@@ -451,51 +607,21 @@ mvn clean install
 
 ---
 
-### 4. IntelliJ IDEA 中的关键设置
+### 4. IntelliJ IDEA 只负责显示辅助
 
-如果你在 IDEA 中能看到生成代码，但手写类仍然报红，通常要检查下面两点：
-
-#### 开启注解处理
-建议只对 `emg-demo.main` 开启：
-
-- 勾选 **启用注解处理**
-- 选择 **从项目类路径获取处理器**
-
-#### 标记生成源码目录
-将：
-
-```text
-emg-demo/target/generated-sources/annotations
-```
-
-标记为：
-
-```text
-生成的源代码根目录
-```
-
-在 IDEA 中通常会显示为：
-
-- 蓝色目录
-- 带雪花图标
-
-这一步非常关键。
+EMG 不依赖 IDEA 才能生成代码。先运行 `mvn clean compile`；如果 Maven 已成功而 IDE 暂时无法解析生成类，再检查 annotation processing 设置，或把 `target/generated-sources/annotations` 标记为 Generated Sources Root。不同 IDEA 版本的自动识别行为可能不同。
 
 ---
 
-### 5. Maven 编译阶段的一个坑
+### 5. Maven 会在同一次编译中处理生成源码
 
-在当前项目里，`emg-demo` 中的手写代码会**直接依赖 APT 生成的类**，例如：
+`emg-demo` 中的手写代码会直接依赖 APT 生成的类，例如：
 
 - `UserBaseResponse`
 - `UserListResponse`
 - `UserConverter`
 
-因此编译链路必须保证：
-
-> **生成代码先产生，再被后续编译识别。**
-
-这也是当前 `emg-demo` 模块中最需要谨慎配置的部分。
+使用上述 `maven-compiler-plugin` 配置后，标准 `mvn clean compile` 会加载 processor、生成源码并在同一次构建中编译它们，不需要手工增加 `-s` 或 generated-sources 路径。
 
 ---
 
@@ -514,8 +640,8 @@ emg-demo/target/generated-sources/annotations
 - 主要支持单表模型派生
 - Request 暂不自动生成
 - 复杂 Projection 仍需手写
-- Maven/IDEA 对生成源码目录的处理需要配置好
-- 示例模块对“编译时序”较敏感
+- View Converter 和 JoinView 当前不支持
+- IDEA 的生成源码显示可能需要按版本手工标记，但不影响 Maven 构建
 
 ---
 
@@ -544,13 +670,13 @@ emg-demo/target/generated-sources/annotations
 ---
 
 ### V2
-目标：显式 Projection 生成
+状态：已实现字段分组和自定义单表 View
 
-思路：
+当前能力：
 
-- 允许用户声明某些“投影模型”
-- 仍保持编译期生成
-- 不强行做 SQL 自动推断
+- 使用 `@ViewGroups` 声明字段分组
+- 使用 `@AutoView` 显式生成单表 View
+- 保持编译期生成，不解析 SQL
 
 ---
 

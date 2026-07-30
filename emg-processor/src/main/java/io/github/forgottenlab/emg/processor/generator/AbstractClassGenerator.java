@@ -78,6 +78,24 @@ public abstract class AbstractClassGenerator {
                                       List<FieldMetadata> fields,
                                       Predicate<FieldMetadata> includePredicate,
                                       boolean useResponseFieldName) {
+        return buildClassSource(
+                packageName,
+                className,
+                classComment,
+                fields,
+                includePredicate,
+                useResponseFieldName,
+                "AutoGen V1"
+        );
+    }
+
+    protected String buildClassSource(String packageName,
+                                      String className,
+                                      String classComment,
+                                      List<FieldMetadata> fields,
+                                      Predicate<FieldMetadata> includePredicate,
+                                      boolean useResponseFieldName,
+                                      String generatorName) {
         StringBuilder sb = new StringBuilder();
         sb.append("package ").append(packageName).append(";\n\n");
 
@@ -88,9 +106,9 @@ public abstract class AbstractClassGenerator {
 
         sb.append("/**\n")
                 .append(" * ").append(classComment).append("\n")
-                .append(" * 由 AutoGen V1 编译期自动生成，请勿手动修改。\n")
+                .append(" * 由 ").append(generatorName).append(" 编译期自动生成，请勿手动修改。\n")
                 .append(" */\n")
-                .append("@Generated(\"AutoGen V1\")\n")
+                .append("@Generated(\"").append(generatorName).append("\")\n")
                 .append("public class ").append(className).append(" {\n\n");
 
         // 生成字段定义

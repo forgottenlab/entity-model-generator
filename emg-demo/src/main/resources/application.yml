@@ -1,3 +1,3 @@
 # 这里只是占位示例。
-# 当前 AutoGen V1 是 APT，不依赖 Spring Boot 配置文件才能生效。
+# EMG V1/V2 都使用 APT，不依赖 Spring Boot 配置文件才能生效。
 # 真正启用方式是：在 Maven/Gradle 中配置 annotation processor。

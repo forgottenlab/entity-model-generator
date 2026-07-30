@@ -35,6 +35,13 @@ public final class PackageResolver {
     }
 
     /**
+     * 解析自定义 View 包路径。
+     */
+    public static String resolveViewPackage(String entityPackage) {
+        return replaceEntityPackage(entityPackage, ModelConstants.VIEW_PACKAGE_SEGMENT);
+    }
+
+    /**
      * 解析 Converter 包路径。
      */
     public static String resolveConverterPackage(String entityPackage) {

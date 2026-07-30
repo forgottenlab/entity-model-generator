@@ -49,6 +49,11 @@ public final class ModelConstants {
     public static final String RESPONSE_PACKAGE_SEGMENT = ".model.response";
 
     /**
+     * 自定义 View 包后缀。
+     */
+    public static final String VIEW_PACKAGE_SEGMENT = ".model.view";
+
+    /**
      * Converter 包后缀。
      */
     public static final String CONVERTER_PACKAGE_SEGMENT = ".converter";

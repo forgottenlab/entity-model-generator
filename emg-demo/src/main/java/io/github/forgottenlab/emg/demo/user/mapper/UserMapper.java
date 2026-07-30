@@ -29,6 +29,7 @@ public class UserMapper {
         entity.setUsername("tom");
         entity.setPassword("secret");
         entity.setNickname("Tom Cat");
+        entity.setPhone("13800000000");
         entity.setStatus(1);
         entity.setCreateTime(LocalDateTime.now().minusDays(3));
         entity.setUpdateTime(LocalDateTime.now());

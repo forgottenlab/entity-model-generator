@@ -20,7 +20,12 @@ class AutoModelProcessorSpiTest {
 
     private static final String PROCESSOR_CLASS = AutoModelProcessor.class.getName();
     private static final String SERVICE_RESOURCE = "META-INF/services/" + Processor.class.getName();
-    private static final String SUPPORTED_ANNOTATION = "io.github.forgottenlab.emg.annotations.AutoModel";
+    private static final Set<String> SUPPORTED_ANNOTATIONS = Set.of(
+            "io.github.forgottenlab.emg.annotations.AutoModel",
+            "io.github.forgottenlab.emg.annotations.AutoView",
+            "io.github.forgottenlab.emg.annotations.AutoViews",
+            "io.github.forgottenlab.emg.annotations.ViewGroups"
+    );
 
     @Test
     void serviceDescriptorContainsSingleForgottenLabProcessor() {
@@ -56,10 +61,10 @@ class AutoModelProcessorSpiTest {
     }
 
     @Test
-    void supportedAnnotationTypesContainOnlyForgottenLabAutoModel() {
+    void supportedAnnotationTypesIncludeV2Annotations() {
         Set<String> supportedTypes = new AutoModelProcessor().getSupportedAnnotationTypes();
 
-        assertEquals(Set.of(SUPPORTED_ANNOTATION), supportedTypes);
+        assertEquals(SUPPORTED_ANNOTATIONS, supportedTypes);
         assertFalse(String.join(System.lineSeparator(), supportedTypes).contains(legacyFqn()));
     }
 
