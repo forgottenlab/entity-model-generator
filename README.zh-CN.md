@@ -37,6 +37,7 @@ EMG 将可重复的部分交给编译期生成：
 | V2 默认规则 | `BaseName + CapitalizedGroup + View`，默认包为 `model.view` |
 | 编译安全 | 在写入生成源码前统一校验；失败时不留下部分生成输出 |
 | Processor 发现 | 手写 `META-INF/services/javax.annotation.processing.Processor` SPI |
+| Processor 兼容性 | 独立 fixture 以两种 processor path 顺序编译 EMG、Lombok 1.18.42 与 MapStruct 1.6.3 |
 
 生成模型包含普通字段、getter 和 setter。V1 Converter 生成单对象与列表转换方法；V2 当前不生成 Converter。
 
@@ -51,6 +52,8 @@ EMG 将可重复的部分交给编译期生成：
 
 项目使用 Maven 多模块构建。`emg-processor` 编译自身时设置 `proc=none`，避免 Processor 自处理；消费者通过 `annotationProcessorPaths` 显式加载 Processor。
 
+`integration-fixtures/plain-emg` 与 `integration-fixtures/annotation-processors` 是独立消费者，不属于 reactor 模块。它们只通过 Maven 坐标解析 EMG，分别验证普通 EMG 接入以及 EMG/Lombok/MapStruct 协作。
+
 ## ✅ 环境要求
 
 - Java 17
@@ -59,6 +62,8 @@ EMG 将可重复的部分交给编译期生成：
 当前已验证环境为 Windows 11、Oracle JDK 17.0.12 和 Apache Maven 3.9.11。验证还覆盖了独立 Maven 消费者和空的隔离 Maven local repository。
 
 Java 17 和 Maven 是当前唯一正式验证的工具链范围。项目尚未验证 Gradle，也未承诺 JDK 21 正式兼容。
+
+CI workflow 面向 `ubuntu-latest` 上的 Temurin Java 17。其命令已在本地复现，但 hosted GitHub Actions 结果需在 push 或 pull request 后实际运行才能确认；当前不宣称 passing，也不展示通过徽章。
 
 ## 📦 快速开始
 
@@ -336,10 +341,20 @@ Demo 还展示了在 service/controller 风格代码中使用生成类型，以�
 
 最近验证结果为 62 tests、0 failures、0 errors、0 skipped。测试使用真实 `javac`/APT/SPI 路径，并已通过独立消费者及隔离 Maven local repository 复核。
 
+annotation processor fixture 使用通用 `ProductEntity`，仅用于验证协作能力，不代表任何真实应用的字段模型。一次 `mvn clean compile` 中，Lombok 提供源类型 accessor，EMG 生成 `ProductAiView`，MapStruct 生成并编译 `ProductMapperImpl`。EMG-first 与 Lombok-first 两个 processor path profile 均已验证，正确性不依赖其中任何顺序。`lombok-mapstruct-binding` 只协调 Lombok 与 MapStruct，不控制 EMG 执行顺序。
+
 从仓库根目录运行：
 
 ```bash
 mvn clean test
+```
+
+在本地安装 EMG 后，可用以下命令复现独立 consumer 检查：
+
+```bash
+mvn -f integration-fixtures/plain-emg/pom.xml clean compile
+mvn -f integration-fixtures/annotation-processors/pom.xml -Porder-emg-first clean compile
+mvn -f integration-fixtures/annotation-processors/pom.xml -Porder-lombok-first clean compile
 ```
 
 此结果只证明当前 Java 17 + Maven 范围，不扩展为 Gradle、JDK 21 或发布就绪声明。
@@ -384,7 +399,7 @@ mvn clean test
 
 ## 🗺️ 路线图
 
-V1 标准模型生成和 V2 字段分组单表 View 已实现。当前下一步是准备双语文档 PR，并审计版本策略、CHANGELOG、LICENSE 和发布前要求。
+V1 标准模型生成和 V2 字段分组单表 View 已实现。仓库现已包含 Apache-2.0 许可证、开源 POM 元数据、独立兼容性 fixture 与 CI 定义。Integration Ready 尚余 hosted GitHub Actions 成功运行这一项门禁。
 
 路线图不是发布承诺。JoinView、SQL、自定义包、Gradle 支持、JDK 21 支持和 Maven Central 发布均未在当前版本中实现或承诺；任何后续功能都需要单独设计、验证和授权。
 
@@ -396,4 +411,4 @@ V1 标准模型生成和 V2 字段分组单表 View 已实现。当前下一步�
 
 ## 📜 许可证
 
-仓库当前没有 `LICENSE` 文件，因此本文档不声明项目采用任何开源许可证。在添加并审阅明确许可证之前，请不要根据 README 推断复制、修改或分发权限。
+本项目采用 [Apache License 2.0](LICENSE)。

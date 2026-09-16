@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run tests
+        run: mvn -B -ntp clean test
+
+      - name: Build packages
+        run: mvn -B -ntp clean package
+
+      - name: Install EMG into an isolated Maven repository
+        run: mvn -B -ntp -Dmaven.repo.local="${{ runner.temp }}/emg-m2" clean install
+
+      - name: Compile the plain EMG consumer
+        run: mvn -B -ntp -f integration-fixtures/plain-emg/pom.xml -Dmaven.repo.local="${{ runner.temp }}/emg-m2" clean compile
+
+      - name: Compile the processor fixture with EMG first
+        run: mvn -B -ntp -f integration-fixtures/annotation-processors/pom.xml -Dmaven.repo.local="${{ runner.temp }}/emg-m2" -Porder-emg-first clean compile
+
+      - name: Compile the processor fixture with Lombok first
+        run: mvn -B -ntp -f integration-fixtures/annotation-processors/pom.xml -Dmaven.repo.local="${{ runner.temp }}/emg-m2" -Porder-lombok-first clean compile

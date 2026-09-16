@@ -37,6 +37,7 @@ This reduces boilerplate and lets code review focus on meaningful business diffe
 | V2 defaults | `BaseName + CapitalizedGroup + View` in the `model.view` package |
 | Compile safety | Full validation before source writes; failed rounds leave no partial generated output |
 | Processor discovery | Handwritten `META-INF/services/javax.annotation.processing.Processor` SPI |
+| Processor compatibility | Standalone fixtures compile EMG with Lombok 1.18.42 and MapStruct 1.6.3 in two processor-path orders |
 
 Generated models contain regular fields, getters, and setters. V1 Converter generation includes single-object and list conversion methods. V2 does not currently generate a Converter.
 
@@ -51,6 +52,8 @@ Generated models contain regular fields, getters, and setters. V1 Converter gene
 
 The project uses a multi-module Maven build. `emg-processor` sets `proc=none` while compiling itself to prevent self-processing. Consumers load the Processor explicitly through `annotationProcessorPaths`.
 
+`integration-fixtures/plain-emg` and `integration-fixtures/annotation-processors` are standalone consumers, not reactor modules. They resolve EMG only through Maven coordinates and verify plain EMG use plus EMG/Lombok/MapStruct interoperability.
+
 ## ✅ Requirements
 
 - Java 17
@@ -59,6 +62,8 @@ The project uses a multi-module Maven build. `emg-processor` sets `proc=none` wh
 The verified environment is Windows 11, Oracle JDK 17.0.12, and Apache Maven 3.9.11. Validation also covered an independent Maven consumer and an initially empty, isolated Maven local repository.
 
 Java 17 and Maven are the only formally verified toolchain scope. Gradle has not been verified, and formal JDK 21 compatibility is not claimed.
+
+The CI workflow targets Temurin Java 17 on `ubuntu-latest`. Its commands are locally reproducible, but the hosted GitHub Actions result remains pending until the workflow runs after a push or pull request; no passing badge is claimed yet.
 
 ## 📦 Quick Start
 
@@ -336,10 +341,20 @@ The current Processor baseline contains 62 tests:
 
 The latest verified result is 62 tests, 0 failures, 0 errors, and 0 skipped. Tests exercise real `javac`/APT/SPI paths and were cross-checked with an independent consumer and an isolated Maven local repository.
 
+The annotation-processor fixture uses a generic `ProductEntity` only to test interoperability; it does not represent any real application schema. In one `mvn clean compile`, Lombok supplies source accessors, EMG generates `ProductAiView`, and MapStruct generates and compiles `ProductMapperImpl`. Both the EMG-first and Lombok-first processor-path profiles are verified; correctness does not rely on either ordering. `lombok-mapstruct-binding` coordinates Lombok and MapStruct and does not control EMG execution order.
+
 Run from the repository root:
 
 ```bash
 mvn clean test
+```
+
+After installing EMG locally, reproduce the standalone consumer checks with:
+
+```bash
+mvn -f integration-fixtures/plain-emg/pom.xml clean compile
+mvn -f integration-fixtures/annotation-processors/pom.xml -Porder-emg-first clean compile
+mvn -f integration-fixtures/annotation-processors/pom.xml -Porder-lombok-first clean compile
 ```
 
 This evidence applies only to the current Java 17 + Maven scope. It does not establish Gradle, JDK 21, or release readiness.
@@ -384,7 +399,7 @@ Not currently. Run `mvn clean install` in the EMG repository first, then let the
 
 ## 🗺️ Roadmap
 
-V1 standard model generation and V2 grouped single-table Views are implemented. The next step is to prepare the bilingual documentation PR and audit version strategy, CHANGELOG, LICENSE, and pre-release requirements.
+V1 standard model generation and V2 grouped single-table Views are implemented. The repository now includes Apache-2.0 licensing, open-source POM metadata, standalone compatibility fixtures, and a CI definition. The remaining Integration Ready gate is a successful hosted GitHub Actions run.
 
 The roadmap is not a release commitment. JoinView, SQL, custom packages, Gradle support, JDK 21 support, and Maven Central publication are neither implemented nor promised for the current version. Any later feature requires separate design, validation, and authorization.
 
@@ -396,4 +411,4 @@ The project grew from the practical cost of repeatedly maintaining DTOs, Respons
 
 ## 📜 License
 
-This repository currently has no `LICENSE` file, so this documentation does not claim that any open-source license applies. Do not infer permission to copy, modify, or distribute the project from the README until an explicit license is added and reviewed.
+Licensed under the [Apache License 2.0](LICENSE).
