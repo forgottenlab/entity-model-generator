@@ -1,0 +1,14 @@
+package io.github.forgottenlab.emg.fixtures.plain.product.entity;
+
+import io.github.forgottenlab.emg.annotations.AutoView;
+import io.github.forgottenlab.emg.annotations.ViewGroups;
+
+@AutoView("basic")
+public class ProductEntity {
+
+    @ViewGroups("basic")
+    private Long id;
+
+    @ViewGroups("basic")
+    private String name;
+}

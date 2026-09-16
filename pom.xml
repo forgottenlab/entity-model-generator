@@ -17,6 +17,22 @@
 
     <name>Entity Model Generator</name>
     <description>A Java APT-based compile-time entity model generator.</description>
+    <url>https://github.com/forgottenlab/entity-model-generator</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:https://github.com/forgottenlab/entity-model-generator.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/forgottenlab/entity-model-generator.git</developerConnection>
+        <url>https://github.com/forgottenlab/entity-model-generator</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <!-- 多模块聚合入口 -->
     <modules>
