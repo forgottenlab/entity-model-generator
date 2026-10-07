@@ -69,7 +69,7 @@ CI workflow 面向 `ubuntu-latest` 上的 Temurin Java 17。其命令已在本�
 
 ### 1. 在本地安装 EMG
 
-`1.2.0` 尚未发布到 Maven Central。首次使用前，请克隆正式仓库并将当前源码安装到本地 Maven repository：
+`1.2.2` 尚未发布到 Maven Central。首次使用前，请克隆正式仓库并将当前源码安装到本地 Maven repository：
 
 ```bash
 git clone https://github.com/forgottenlab/entity-model-generator.git
@@ -100,7 +100,7 @@ mvn clean install
         <dependency>
             <groupId>io.github.forgottenlab.emg</groupId>
             <artifactId>emg-annotations</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.2</version>
         </dependency>
     </dependencies>
 
@@ -116,7 +116,7 @@ mvn clean install
                         <path>
                             <groupId>io.github.forgottenlab.emg</groupId>
                             <artifactId>emg-processor</artifactId>
-                            <version>1.2.0</version>
+                            <version>1.2.2</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
@@ -165,8 +165,8 @@ Maven 会自动把生成源码加入同一次编译。不需要 Spring、MyBatis
 
 消费者 Maven 配置有两个不同职责：
 
-1. `io.github.forgottenlab.emg:emg-annotations:1.2.0` 放在普通 `dependencies` 中，使源码可以引用公开注解。
-2. `io.github.forgottenlab.emg:emg-processor:1.2.0` 放在 `maven-compiler-plugin` 的 `annotationProcessorPaths` 中，使 `javac` 可以发现并运行 Processor。
+1. `io.github.forgottenlab.emg:emg-annotations:1.2.2` 放在普通 `dependencies` 中，使源码可以引用公开注解。
+2. `io.github.forgottenlab.emg:emg-processor:1.2.2` 放在 `maven-compiler-plugin` 的 `annotationProcessorPaths` 中，使 `javac` 可以发现并运行 Processor。
 
 消费者不需要把 `emg-core` 声明为普通依赖；Processor 会通过自身 Maven 依赖获得它。Processor 的服务描述文件为 `META-INF/services/javax.annotation.processing.Processor`，其中注册 `io.github.forgottenlab.emg.processor.AutoModelProcessor`。
 
@@ -390,11 +390,11 @@ mvn -f integration-fixtures/annotation-processors/pom.xml -Porder-lombok-first c
 
 ### 能否从 Maven Central 直接下载
 
-当前不能。请先在 EMG 仓库执行 `mvn clean install`，再让消费者使用本地 Maven repository 中的 `1.2.0` 构件。
+当前不能。请先在 EMG 仓库执行 `mvn clean install`，再让消费者使用本地 Maven repository 中的 `1.2.2`构件。
 
 ## ⚠️ 当前限制
 
-- `1.2.0` 尚未发布到 Maven Central，使用前需要本地执行 EMG 的 `mvn clean install`。
+- `1\.2.2` 尚未发布到 Maven Central，使用前需要本地执行 EMG 的 `mvn clean install`。
 - 尚未发布稳定 Release，也不声称 production-ready。
 - 只正式验证 Java 17 和 Maven；未验证 Gradle，也未承诺 JDK 21 正式兼容。
 - 不支持 JoinView、View Converter 或 SQL 解析。
@@ -419,3 +419,6 @@ V1 标准模型生成和 V2 字段分组单表 View 已实现。仓库现已包�
 ## 📜 许可证
 
 本项目采用 [Apache License 2.0](LICENSE)。
+
+
+

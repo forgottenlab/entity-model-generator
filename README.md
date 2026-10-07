@@ -69,7 +69,7 @@ The CI workflow targets Temurin Java 17 on `ubuntu-latest`. Its commands are loc
 
 ### 1. Install EMG locally
 
-Version `1.2.0` is not published to Maven Central. Before first use, clone the official repository and install the current source into your local Maven repository:
+Version `1.2.2` is not published to Maven Central. Before first use, clone the official repository and install the current source into your local Maven repository:
 
 ```bash
 git clone https://github.com/forgottenlab/entity-model-generator.git
@@ -100,7 +100,7 @@ The following is a copyable minimum Maven configuration. `emg-annotations` is a 
         <dependency>
             <groupId>io.github.forgottenlab.emg</groupId>
             <artifactId>emg-annotations</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.2</version>
         </dependency>
     </dependencies>
 
@@ -116,7 +116,7 @@ The following is a copyable minimum Maven configuration. `emg-annotations` is a 
                         <path>
                             <groupId>io.github.forgottenlab.emg</groupId>
                             <artifactId>emg-processor</artifactId>
-                            <version>1.2.0</version>
+                            <version>1.2.2</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
@@ -165,8 +165,8 @@ Maven adds generated source to the same compilation automatically. No Spring, My
 
 The consumer Maven configuration has two distinct responsibilities:
 
-1. Place `io.github.forgottenlab.emg:emg-annotations:1.2.0` in regular `dependencies` so source code can reference the public annotations.
-2. Place `io.github.forgottenlab.emg:emg-processor:1.2.0` in the `maven-compiler-plugin` `annotationProcessorPaths` so `javac` can discover and run the Processor.
+1. Place `io.github.forgottenlab.emg:emg-annotations:1.2.2` in regular `dependencies` so source code can reference the public annotations.
+2. Place `io.github.forgottenlab.emg:emg-processor:1.2.2` in the `maven-compiler-plugin` `annotationProcessorPaths` so `javac` can discover and run the Processor.
 
 Consumers do not need `emg-core` as a regular dependency; the Processor obtains it through its own Maven dependencies. The service descriptor is `META-INF/services/javax.annotation.processing.Processor`, which registers `io.github.forgottenlab.emg.processor.AutoModelProcessor`.
 
@@ -390,11 +390,11 @@ It controls only V1 Response names and Converter mappings. View members are inde
 
 ### Can EMG be downloaded directly from Maven Central?
 
-Not currently. Run `mvn clean install` in the EMG repository first, then let the consumer resolve the `1.2.0` artifacts from the local Maven repository.
+Not currently. Run `mvn clean install` in the EMG repository first, then let the consumer resolve the `1.2.2` artifacts from the local Maven repository.
 
 ## ⚠️ Current Limitations
 
-- Version `1.2.0` is not published to Maven Central; EMG must be installed locally with `mvn clean install` before use.
+- Version `1.2.2` is not published to Maven Central; EMG must be installed locally with `mvn clean install` before use.
 - No stable Release has been published, and the project does not claim production readiness.
 - Only Java 17 and Maven are formally verified. Gradle is unverified, and formal JDK 21 compatibility is not claimed.
 - JoinView, View Converter, and SQL parsing are not supported.
@@ -419,3 +419,6 @@ The project grew from the practical cost of repeatedly maintaining DTOs, Respons
 ## 📜 License
 
 Licensed under the [Apache License 2.0](LICENSE).
+
+
+
