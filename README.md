@@ -314,6 +314,8 @@ V1 and V2 read only directly declared, non-`static` fields from the source class
 
 View outputs carry an internal CLASS-retained `EmgGenerated` marker (generator, source entity, View identity, schema fingerprint) and an ownership receipt in the compiler's `CLASS_OUTPUT`. The marker uses the existing annotations artifact and adds no runtime dependency. A dependency's marker alone is insufficient for reuse. On a real non-clean javac invocation, a locally owned historical View is reused only when its fingerprint and actual fields/accessor signatures match the desired model. User/dependency target conflicts still fail.
 
+If an incremental rebuild replaces `CLASS_OUTPUT` but retains generated source inputs, ownership can be recovered only when the marker matches and the compiler's source file identity exactly matches the target resource in its current `SOURCE_OUTPUT`. After schema and structure validation, EMG restores the class-output receipt. Copied markers in user sources, dependency classes, and corrupt receipts do not qualify. Class-only output without a receipt still requires clean regeneration; this recovery uses the JDK Trees API, with receipt-only behavior on unsupported compilers.
+
 Changing selected fields (adding, removing, changing types or order) fails with `EMG generated type is stale; clean regeneration is required`. Run `mvn clean compile` to regenerate. Existing outputs from 1.2.0 without provenance also require one clean build when upgrading; the Processor cannot safely infer their ownership. Keep `emg-annotations` and `emg-processor` versions aligned. This policy covers Views, not V1 Converter incremental regeneration. Removed or renamed View declarations can leave orphaned outputs until a clean build.
 
 ## 🎯 Demo
@@ -333,7 +335,7 @@ The Demo also shows generated types in service/controller-style code and extends
 
 ## 🧪 Testing
 
-The current Processor baseline contains 79 tests:
+The current Processor baseline contains 81 tests:
 
 | Test class | Count | Coverage |
 | --- | ---: | --- |
@@ -342,7 +344,7 @@ The current Processor baseline contains 79 tests:
 | `AutoModelProcessorSpiTest` | 3 | SPI, ServiceLoader, and supported annotation types |
 | `AutoViewProcessorCompilationTest` | 20 | V2 success cases, composition, types, order, and retention |
 | `AutoViewProcessorValidationTest` | 10 | V2 diagnostics, conflicts, and zero partial output |
-| `AutoViewIncrementalCompilationTest` | 17 | Forced disk javac, retained source/class, provenance, real conflicts, stale schema, and Filer experiments |
+| `AutoViewIncrementalCompilationTest` | 19 | Forced disk javac, retained source/class, changed class-output lifecycle, provenance, real conflicts, stale schema, and Filer experiments |
 
 The Processor regression suite exercises real `javac`/APT/SPI paths, including non-clean compilations that explicitly invoke javac after touching an unchanged entity. Independent consumer and isolated Maven repository checks are also available.
 
