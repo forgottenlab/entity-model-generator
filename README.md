@@ -310,7 +310,11 @@ Before calling the Filer, the Processor validates non-class inputs, empty or ill
 
 Type analysis is based on compile-time `TypeMirror` structures. It supports primitives, declared types, arrays, parameterized types, wildcards, and nested types. Simple-name conflicts fall back to fully qualified type names. Unsupported kinds such as `TYPEVAR`, `ERROR`, `INTERSECTION`, `UNION`, `NONE`, and `NULL` produce source-located diagnostics.
 
-V1 and V2 read only directly declared, non-`static` fields from the source class; inherited fields are not collected. Do not edit generated source because the next compilation will overwrite it. Extend business behavior through inheritance, composition, or handwritten dedicated types.
+V1 and V2 read only directly declared, non-`static` fields from the source class; inherited fields are not collected. Do not edit generated source. Extend business behavior through inheritance, composition, or handwritten dedicated types.
+
+View outputs carry an internal CLASS-retained `EmgGenerated` marker (generator, source entity, View identity, schema fingerprint) and an ownership receipt in the compiler's `CLASS_OUTPUT`. The marker uses the existing annotations artifact and adds no runtime dependency. A dependency's marker alone is insufficient for reuse. On a real non-clean javac invocation, a locally owned historical View is reused only when its fingerprint and actual fields/accessor signatures match the desired model. User/dependency target conflicts still fail.
+
+Changing selected fields (adding, removing, changing types or order) fails with `EMG generated type is stale; clean regeneration is required`. Run `mvn clean compile` to regenerate. Existing outputs from 1.2.0 without provenance also require one clean build when upgrading; the Processor cannot safely infer their ownership. Keep `emg-annotations` and `emg-processor` versions aligned. This policy covers Views, not V1 Converter incremental regeneration. Removed or renamed View declarations can leave orphaned outputs until a clean build.
 
 ## 🎯 Demo
 
@@ -329,7 +333,7 @@ The Demo also shows generated types in service/controller-style code and extends
 
 ## 🧪 Testing
 
-The current Processor baseline contains 62 tests:
+The current Processor baseline contains 79 tests:
 
 | Test class | Count | Coverage |
 | --- | ---: | --- |
@@ -338,8 +342,9 @@ The current Processor baseline contains 62 tests:
 | `AutoModelProcessorSpiTest` | 3 | SPI, ServiceLoader, and supported annotation types |
 | `AutoViewProcessorCompilationTest` | 20 | V2 success cases, composition, types, order, and retention |
 | `AutoViewProcessorValidationTest` | 10 | V2 diagnostics, conflicts, and zero partial output |
+| `AutoViewIncrementalCompilationTest` | 17 | Forced disk javac, retained source/class, provenance, real conflicts, stale schema, and Filer experiments |
 
-The latest verified result is 62 tests, 0 failures, 0 errors, and 0 skipped. Tests exercise real `javac`/APT/SPI paths and were cross-checked with an independent consumer and an isolated Maven local repository.
+The Processor regression suite exercises real `javac`/APT/SPI paths, including non-clean compilations that explicitly invoke javac after touching an unchanged entity. Independent consumer and isolated Maven repository checks are also available.
 
 The annotation-processor fixture uses a generic `ProductEntity` only to test interoperability; it does not represent any real application schema. In one `mvn clean compile`, Lombok supplies source accessors, EMG generates `ProductAiView`, and MapStruct generates and compiles `ProductMapperImpl`. Both the EMG-first and Lombok-first processor-path profiles are verified; correctness does not rely on either ordering. `lombok-mapstruct-binding` coordinates Lombok and MapStruct and does not control EMG execution order.
 
