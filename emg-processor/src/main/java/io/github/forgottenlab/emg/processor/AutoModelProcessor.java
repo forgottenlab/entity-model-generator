@@ -16,6 +16,7 @@ import io.github.forgottenlab.emg.processor.resolver.AutoViewMetadataResolver;
 import io.github.forgottenlab.emg.processor.resolver.SourceMetadataResolver;
 import io.github.forgottenlab.emg.processor.support.ProcessorException;
 import io.github.forgottenlab.emg.processor.support.ProcessorLogger;
+import io.github.forgottenlab.emg.processor.support.ViewOutputProvenance;
 import io.github.forgottenlab.emg.processor.validator.AutoModelValidator;
 import io.github.forgottenlab.emg.processor.validator.AutoViewValidator;
 
@@ -27,6 +28,7 @@ import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -220,7 +222,14 @@ public class AutoModelProcessor extends AbstractProcessor {
         }
         for (Map.Entry<AutoViewMetadata, Element> candidate : autoViewCandidates.entrySet()) {
             if (reusableViews.contains(candidate.getKey())) {
-                logger.note("Reusing verified EMG View: " + candidate.getKey().getViewQualifiedName());
+                try {
+                    // Re-establish CLASS_OUTPUT ownership after a source-only incremental rebuild.
+                    new ViewOutputProvenance(processingEnv).writeReceipt(candidate.getKey(), candidate.getValue());
+                    logger.note("Reusing verified EMG View: " + candidate.getKey().getViewQualifiedName());
+                } catch (IOException exception) {
+                    logger.error("Cannot record EMG View output ownership: "
+                            + candidate.getKey().getViewQualifiedName(), candidate.getValue());
+                }
             } else {
                 generateView(candidate.getKey(), candidate.getValue());
             }

@@ -314,6 +314,8 @@ V1 和 V2 都只读取来源类直接声明的非 `static` 字段，不收集继
 
 View 输出带有内部 CLASS retention 的 `EmgGenerated` 标记（generator、source entity、View identity、schema fingerprint），并在编译器 `CLASS_OUTPUT` 中保存 ownership receipt。标记使用已有 annotations 构件，不增加运行时依赖。仅有 dependency 内的标记不能获得复用权限。真实非 clean javac 执行时，只有本地历史 View 的 fingerprint 和实际字段/accessor 签名均匹配当前模型，才允许复用；用户/dependency 同名冲突仍会失败。
 
+增量重建替换 `CLASS_OUTPUT` 但保留生成源码输入时，只有 marker 匹配且编译器给出的源码文件身份与当前 `SOURCE_OUTPUT` 的目标资源完全一致，才允许恢复归属。通过 schema 与结构校验后，EMG 重建 class-output receipt。用户源码中复制的 marker、dependency class 和损坏 receipt 均不满足条件。只有 class 且缺少 receipt 时仍需 clean regeneration；此恢复依赖 JDK Trees API，不支持该 API 的编译器保持 receipt-only 策略。
+
 所选字段新增、删除、类型或顺序变化时，编译报告 `EMG generated type is stale; clean regeneration is required`。执行 `mvn clean compile` 后重新生成。从 1.2.0 升级时，没有 provenance 的历史输出也需要一次 clean 构建；Processor 不能安全猜测其归属。`emg-annotations` 与 `emg-processor` 版本应保持一致。该策略覆盖 View，不承诺 V1 Converter 增量再生成。删除或重命名 View 声明后，旧输出可能残留到下一次 clean 构建。
 
 ## 🎯 Demo 示例
@@ -333,7 +335,7 @@ Demo 还展示了在 service/controller 风格代码中使用生成类型，以�
 
 ## 🧪 测试
 
-当前 Processor 测试基线为 79 tests：
+当前 Processor 测试基线为 81 tests：
 
 | 测试类 | 数量 | 范围 |
 | --- | ---: | --- |
@@ -342,7 +344,7 @@ Demo 还展示了在 service/controller 风格代码中使用生成类型，以�
 | `AutoModelProcessorSpiTest` | 3 | SPI、ServiceLoader 和 supported annotation types |
 | `AutoViewProcessorCompilationTest` | 20 | V2 成功场景、组合、类型、顺序和 retention |
 | `AutoViewProcessorValidationTest` | 10 | V2 诊断、冲突与零部分输出 |
-| `AutoViewIncrementalCompilationTest` | 17 | 强制磁盘 javac、保留源码/class、provenance、真实冲突、过期 schema 与 Filer 实验 |
+| `AutoViewIncrementalCompilationTest` | 19 | 强制磁盘 javac、保留源码/class、更换 class-output 生命周期、provenance、真实冲突、过期 schema 与 Filer 实验 |
 
 Processor 回归使用真实 `javac`/APT/SPI 路径，包含 touch 未变化 Entity 后显式调用 javac 的非 clean 场景。项目也提供独立消费者和隔离 Maven repository 核验方式。
 

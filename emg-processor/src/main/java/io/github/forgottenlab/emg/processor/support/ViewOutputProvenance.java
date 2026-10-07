@@ -1,5 +1,7 @@
 package io.github.forgottenlab.emg.processor.support;
 
+import com.sun.source.util.TreePath;
+import com.sun.source.util.Trees;
 import io.github.forgottenlab.emg.core.model.AutoViewMetadata;
 import io.github.forgottenlab.emg.core.model.FieldMetadata;
 import io.github.forgottenlab.emg.core.util.NameUtils;
@@ -27,7 +29,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Compiler-visible provenance plus a receipt in this compilation's CLASS_OUTPUT.
+ * Compiler-visible provenance plus local compiler output ownership.
+ * Retained SOURCE_OUTPUT inputs can recover ownership if CLASS_OUTPUT was replaced.
  * A marker shipped by a dependency alone does not grant local output ownership.
  * All output access goes through Filer locations, never filesystem-path inference.
  */
@@ -37,10 +40,12 @@ public final class ViewOutputProvenance {
     private static final String FORMAT = "EMG-VIEW-1";
     private final Filer filer;
     private final Elements elements;
+    private final ProcessingEnvironment environment;
 
     public enum ExistingTarget { ABSENT, EXTERNAL, HISTORICAL_EMG }
 
     public ViewOutputProvenance(ProcessingEnvironment environment) {
+        this.environment = environment;
         filer = environment.getFiler();
         elements = environment.getElementUtils();
     }
@@ -69,7 +74,26 @@ public final class ViewOutputProvenance {
             return receipt.equals(receipt(view, historicalSchema))
                     ? ExistingTarget.HISTORICAL_EMG : ExistingTarget.EXTERNAL;
         } catch (IOException exception) {
-            return ExistingTarget.EXTERNAL;
+            // A rebuild can replace classes/receipts while keeping generated sources.
+            // Recover only from the exact source supplied by this compiler's SOURCE_OUTPUT;
+            // a dependency marker or a copied marker in user sources cannot satisfy this.
+            return isLocalGeneratedSource(existing, view)
+                    ? ExistingTarget.HISTORICAL_EMG : ExistingTarget.EXTERNAL;
+        }
+    }
+
+    private boolean isLocalGeneratedSource(TypeElement existing, AutoViewMetadata view) {
+        try {
+            TreePath path = Trees.instance(environment).getPath(existing);
+            if (path == null) {
+                return false;
+            }
+            return path.getCompilationUnit().getSourceFile().toUri().equals(
+                    filer.getResource(StandardLocation.SOURCE_OUTPUT, view.getViewPackageName(),
+                            view.getViewClassName() + ".java").toUri());
+        } catch (IOException | IllegalArgumentException exception) {
+            // Compilers without the Trees API keep the conservative receipt-only policy.
+            return false;
         }
     }
 

@@ -66,6 +66,44 @@ class AutoViewIncrementalCompilationTest {
     }
 
     @Test
+    void retainedSourceWithFreshClassOutputCanBeReused(@TempDir Path root) throws Exception {
+        Path entity = entity(root, fixture());
+        assertTrue(compile(root, List.of(entity), "", new AutoModelProcessor()).ok());
+        Path view = root.resolve("generated/" + RELATIVE_TARGET);
+        byte[] before = Files.readAllBytes(view);
+        Path freshClasses = root.resolve("fresh-classes");
+        CountingProcessor processor = new CountingProcessor();
+        Result result = compile(root, freshClasses, List.of(entity, view), "", processor);
+        assertTrue(processor.invocations > 0, "javac/APT must actually run");
+        System.out.println("FRESH_CLASS_OUTPUT: " + result.messages());
+        assertTrue(result.ok(), result.messages());
+        assertTrue(result.messages().contains("Reusing verified EMG View"), result.messages());
+        assertArrayEquals(before, Files.readAllBytes(view));
+        assertTrue(Files.exists(freshClasses.resolve(TARGET.replace('.', '/') + ".class")));
+        // A later invocation sees only the newly compiled class; its receipt must be restored.
+        Result classOnly = compile(root, freshClasses, List.of(entity), "", new AutoModelProcessor());
+        assertTrue(classOnly.ok(), classOnly.messages());
+        assertTrue(classOnly.messages().contains("Reusing verified EMG View"), classOnly.messages());
+    }
+
+    @Test
+    void freshClassOutputStillDetectsStaleRetainedSource(@TempDir Path root) throws Exception {
+        Path entity = entity(root, fixture());
+        assertTrue(compile(root, List.of(entity), "", new AutoModelProcessor()).ok());
+        Path view = root.resolve("generated/" + RELATIVE_TARGET);
+        byte[] before = Files.readAllBytes(view);
+        entity(root, changedSchemas().get(0));
+        Result result = compile(root, root.resolve("fresh-classes"), List.of(entity, view), "",
+                new AutoModelProcessor());
+        assertFalse(result.ok());
+        assertTrue(result.messages().contains("EMG generated type is stale; clean regeneration is required"),
+                result.messages());
+        assertArrayEquals(before, Files.readAllBytes(view));
+        assertFalse(Files.exists(root.resolve("fresh-classes/META-INF/emg/views")),
+                "Validation failure must not write recovered ownership");
+    }
+
+    @Test
     void dependencyDefinedTargetStillFails(@TempDir Path root) throws Exception {
         Path dependency = root.resolve("dependency");
         Path source = write(dependency.resolve("src/" + RELATIVE_TARGET), userTarget());
@@ -177,6 +215,8 @@ class AutoViewIncrementalCompilationTest {
             write(receipt, "not an EMG ownership receipt");
         }
         assertConflict(compile(root, List.of(entity), "", new AutoModelProcessor()));
+        assertConflict(compile(root, List.of(entity, root.resolve("generated/" + RELATIVE_TARGET)), "",
+                new AutoModelProcessor()));
     }
 
     @Test
@@ -276,18 +316,23 @@ class AutoViewIncrementalCompilationTest {
 
     private static Result compile(Path root, List<Path> sources, String extraClasspath,
                                   AbstractProcessor processor) throws IOException {
+        return compile(root, root.resolve("classes"), sources, extraClasspath, processor);
+    }
+
+    private static Result compile(Path root, Path classOutput, List<Path> sources, String extraClasspath,
+                                  AbstractProcessor processor) throws IOException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler);
-        Files.createDirectories(root.resolve("classes"));
+        Files.createDirectories(classOutput);
         Files.createDirectories(root.resolve("generated"));
-        String classpath = root.resolve("classes") + File.pathSeparator + extraClasspath
+        String classpath = classOutput + File.pathSeparator + extraClasspath
                 + File.pathSeparator + System.getProperty("surefire.test.class.path",
                 System.getProperty("java.class.path"));
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         try (StandardJavaFileManager manager = compiler.getStandardFileManager(
                 diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
             List<String> options = new ArrayList<>(List.of("--release", "17", "-classpath", classpath,
-                    "-d", root.resolve("classes").toString(), "-s", root.resolve("generated").toString()));
+                    "-d", classOutput.toString(), "-s", root.resolve("generated").toString()));
             if (processor == null) {
                 options.add("-proc:none");
             }
