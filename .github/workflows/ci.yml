@@ -25,14 +25,14 @@ jobs:
           java-version: '17'
           cache: maven
 
+      - name: Install EMG into an isolated Maven repository
+        run: mvn -B -ntp -Dmaven.repo.local="${{ runner.temp }}/emg-m2" clean install
+
       - name: Run tests
         run: mvn -B -ntp clean test
 
       - name: Build packages
         run: mvn -B -ntp clean package
-
-      - name: Install EMG into an isolated Maven repository
-        run: mvn -B -ntp -Dmaven.repo.local="${{ runner.temp }}/emg-m2" clean install
 
       - name: Compile the plain EMG consumer
         run: mvn -B -ntp -f integration-fixtures/plain-emg/pom.xml -Dmaven.repo.local="${{ runner.temp }}/emg-m2" clean compile
