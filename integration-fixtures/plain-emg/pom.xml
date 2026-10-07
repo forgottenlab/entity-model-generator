@@ -10,7 +10,7 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <emg.version>1.2.0</emg.version>
+        <emg.version>1.2.1</emg.version>
         <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
     </properties>
 
