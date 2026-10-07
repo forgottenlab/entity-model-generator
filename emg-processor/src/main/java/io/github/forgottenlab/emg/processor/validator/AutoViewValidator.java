@@ -5,15 +5,19 @@ import io.github.forgottenlab.emg.core.model.AutoViewMetadata;
 import io.github.forgottenlab.emg.core.model.FieldMetadata;
 import io.github.forgottenlab.emg.core.model.SourceMetadata;
 import io.github.forgottenlab.emg.processor.support.ProcessorException;
+import io.github.forgottenlab.emg.processor.support.ViewOutputProvenance;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * EMG V2 自定义 View 的编译期输入与目标校验器。
@@ -21,9 +25,11 @@ import java.util.Map;
 public class AutoViewValidator {
 
     private final Elements elements;
+    private final ViewOutputProvenance provenance;
 
     public AutoViewValidator(ProcessingEnvironment processingEnvironment) {
         this.elements = processingEnvironment.getElementUtils();
+        this.provenance = new ViewOutputProvenance(processingEnvironment);
     }
 
     public void validateAnnotatedElement(Element sourceElement) {
@@ -67,10 +73,11 @@ public class AutoViewValidator {
     }
 
     /**
-     * 校验全部 View 目标的唯一性及与当前 compilation 已有源码类型的冲突。
+     * 校验全部目标，返回已由本地 EMG 输出且模型完全匹配、可安全复用的 View。
      */
-    public void validateTargetTypeConflicts(Map<AutoViewMetadata, Element> candidates) {
+    public Set<AutoViewMetadata> validateTargetTypeConflicts(Map<AutoViewMetadata, Element> candidates) {
         Map<String, String> owners = new LinkedHashMap<>();
+        Set<AutoViewMetadata> reusable = new LinkedHashSet<>();
         for (Map.Entry<AutoViewMetadata, Element> candidate : candidates.entrySet()) {
             AutoViewMetadata metadata = candidate.getKey();
             Element sourceElement = candidate.getValue();
@@ -84,13 +91,27 @@ public class AutoViewValidator {
                         sourceElement
                 );
             }
-            if (elements.getTypeElement(qualifiedName) != null) {
+            TypeElement existing = elements.getTypeElement(qualifiedName);
+            ViewOutputProvenance.ExistingTarget classification = provenance.classify(existing, metadata);
+            if (classification == ViewOutputProvenance.ExistingTarget.EXTERNAL) {
                 throw new ProcessorException(
-                        "View 目标类型已存在: " + qualifiedName,
+                        "View 目标类型已存在: " + qualifiedName
+                                + " (user/dependency type or unverified legacy output; "
+                                + "clean regeneration is required for outputs predating EMG provenance)",
                         sourceElement
                 );
             }
+            if (classification == ViewOutputProvenance.ExistingTarget.HISTORICAL_EMG) {
+                if (!provenance.matchesDesiredModel(existing, metadata)) {
+                    throw new ProcessorException(
+                            "EMG generated type is stale; clean regeneration is required: " + qualifiedName,
+                            sourceElement
+                    );
+                }
+                reusable.add(metadata);
+            }
         }
+        return reusable;
     }
 
     private void validateJavaIdentifier(String label, String value, Element sourceElement) {

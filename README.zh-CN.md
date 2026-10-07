@@ -310,7 +310,11 @@ Processor 会在调用 Filer 前校验非 class 输入、非法或空名称、�
 
 类型解析基于编译期 `TypeMirror`，支持 primitive、声明类型、数组、参数化类型、通配符和嵌套类型。同简单名类型冲突时会回退到完整限定名。`TYPEVAR`、`ERROR`、`INTERSECTION`、`UNION`、`NONE` 和 `NULL` 等不支持类型会产生可定位的编译诊断。
 
-V1 和 V2 都只读取来源类直接声明的非 `static` 字段，不收集继承字段。不要手改生成源码；下次编译会覆盖它们。业务扩展应使用继承、组合或手写专属类型。
+V1 和 V2 都只读取来源类直接声明的非 `static` 字段，不收集继承字段。不要手改生成源码。业务扩展应使用继承、组合或手写专属类型。
+
+View 输出带有内部 CLASS retention 的 `EmgGenerated` 标记（generator、source entity、View identity、schema fingerprint），并在编译器 `CLASS_OUTPUT` 中保存 ownership receipt。标记使用已有 annotations 构件，不增加运行时依赖。仅有 dependency 内的标记不能获得复用权限。真实非 clean javac 执行时，只有本地历史 View 的 fingerprint 和实际字段/accessor 签名均匹配当前模型，才允许复用；用户/dependency 同名冲突仍会失败。
+
+所选字段新增、删除、类型或顺序变化时，编译报告 `EMG generated type is stale; clean regeneration is required`。执行 `mvn clean compile` 后重新生成。从 1.2.0 升级时，没有 provenance 的历史输出也需要一次 clean 构建；Processor 不能安全猜测其归属。`emg-annotations` 与 `emg-processor` 版本应保持一致。该策略覆盖 View，不承诺 V1 Converter 增量再生成。删除或重命名 View 声明后，旧输出可能残留到下一次 clean 构建。
 
 ## 🎯 Demo 示例
 
@@ -329,7 +333,7 @@ Demo 还展示了在 service/controller 风格代码中使用生成类型，以�
 
 ## 🧪 测试
 
-当前 Processor 测试基线为 62 tests：
+当前 Processor 测试基线为 79 tests：
 
 | 测试类 | 数量 | 范围 |
 | --- | ---: | --- |
@@ -338,8 +342,9 @@ Demo 还展示了在 service/controller 风格代码中使用生成类型，以�
 | `AutoModelProcessorSpiTest` | 3 | SPI、ServiceLoader 和 supported annotation types |
 | `AutoViewProcessorCompilationTest` | 20 | V2 成功场景、组合、类型、顺序和 retention |
 | `AutoViewProcessorValidationTest` | 10 | V2 诊断、冲突与零部分输出 |
+| `AutoViewIncrementalCompilationTest` | 17 | 强制磁盘 javac、保留源码/class、provenance、真实冲突、过期 schema 与 Filer 实验 |
 
-最近验证结果为 62 tests、0 failures、0 errors、0 skipped。测试使用真实 `javac`/APT/SPI 路径，并已通过独立消费者及隔离 Maven local repository 复核。
+Processor 回归使用真实 `javac`/APT/SPI 路径，包含 touch 未变化 Entity 后显式调用 javac 的非 clean 场景。项目也提供独立消费者和隔离 Maven repository 核验方式。
 
 annotation processor fixture 使用通用 `ProductEntity`，仅用于验证协作能力，不代表任何真实应用的字段模型。一次 `mvn clean compile` 中，Lombok 提供源类型 accessor，EMG 生成 `ProductAiView`，MapStruct 生成并编译 `ProductMapperImpl`。EMG-first 与 Lombok-first 两个 processor path profile 均已验证，正确性不依赖其中任何顺序。`lombok-mapstruct-binding` 只协调 Lombok 与 MapStruct，不控制 EMG 执行顺序。
 

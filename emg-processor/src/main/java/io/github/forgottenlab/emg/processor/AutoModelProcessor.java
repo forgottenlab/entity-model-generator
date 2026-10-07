@@ -205,9 +205,10 @@ public class AutoModelProcessor extends AbstractProcessor {
             return true;
         }
 
+        Set<AutoViewMetadata> reusableViews;
         try {
             validator.validateTargetTypeConflicts(autoModelCandidates);
-            autoViewValidator.validateTargetTypeConflicts(autoViewCandidates);
+            reusableViews = autoViewValidator.validateTargetTypeConflicts(autoViewCandidates);
         } catch (ProcessorException exception) {
             logger.error("AutoGen 处理失败: " + exception.getMessage(), exception.getElement());
             return true;
@@ -218,7 +219,11 @@ public class AutoModelProcessor extends AbstractProcessor {
             generate(candidate.getKey(), candidate.getValue());
         }
         for (Map.Entry<AutoViewMetadata, Element> candidate : autoViewCandidates.entrySet()) {
-            generateView(candidate.getKey(), candidate.getValue());
+            if (reusableViews.contains(candidate.getKey())) {
+                logger.note("Reusing verified EMG View: " + candidate.getKey().getViewQualifiedName());
+            } else {
+                generateView(candidate.getKey(), candidate.getValue());
+            }
         }
 
         return true;
