@@ -12,7 +12,7 @@
      -->
     <groupId>io.github.forgottenlab.emg</groupId>
     <artifactId>entity-model-generator</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
     <packaging>pom</packaging>
 
     <name>Entity Model Generator</name>

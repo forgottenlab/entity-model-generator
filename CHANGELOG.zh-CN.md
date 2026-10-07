@@ -22,3 +22,11 @@
 
 - 未破坏公开 Annotation API。
 - 已由 1.2.0 生成的产物升级后需要执行一次 clean regeneration。
+
+---
+
+## 1.2.1
+
+### 修复
+
+- 增强 Annotation Processor 生成输出 provenance 追踪能力。

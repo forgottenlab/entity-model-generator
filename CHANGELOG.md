@@ -22,3 +22,11 @@ The format follows Keep a Changelog principles.
 
 - No breaking changes to public annotation APIs.
 - Existing 1.2.0 generated outputs require one clean regeneration.
+
+---
+
+## 1.2.1
+
+### Fixed
+
+- Harden incremental annotation processing with generated output provenance tracking.
